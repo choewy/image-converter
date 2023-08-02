@@ -1,26 +1,34 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
     "module": "esnext",
+    "declaration": true,
+    "removeComments": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "baseUrl": "./",
+    "skipLibCheck": true,
+    "strict": true,
+    "strictNullChecks": false,
+    "allowJs": true,
+    "noFallthroughCasesInSwitch": false,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "declarationDir": "./types",
+    "paths": {
+      "@/*": ["src/*"],
+      "@app": ["src/app"],
+      "@app/*": ["src/app/*"],
+      "@core": ["src/core"],
+      "@core/*": ["src/core/*"]
+    }
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src", "types"],
+  "exclude": ["./craco.config.js"]
 }
