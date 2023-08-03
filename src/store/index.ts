@@ -1,1 +1,1 @@
-export * from './files.store';
+export * from './stores';
