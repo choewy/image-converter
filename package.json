@@ -5,18 +5,26 @@
   "homepage": "./",
   "main": "./public/electron.js",
   "build": {
-    "productName": "react-electron",
+    "productName": "Image Converter ",
     "asar": true,
     "appId": "org.sss.electron-react"
   },
   "scripts": {
     "react-start": "craco start",
-    "start": "concurrently \"cross-env NODE_ENV=development BROWSER=none npm run react-start\" \"wait-on http://localhost:8000 && electron .\"",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "react-build": "craco build",
+    "react-test": "craco test",
+    "react-eject": "craco eject",
+    "start:react": "cross-env NODE_ENV=development BROWSER=none npm run react-start",
+    "start:electron": "wait-on http://localhost:8000 && electron .",
+    "start": "concurrently \"npm run start:react\" \"npm run start:electron\"",
+    "build": "npm run react-build && electron-builder",
+    "release": "npm run react-build && electron-builder --publish=always"
   },
   "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.14.3",
+    "@mui/material": "^5.14.3",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
@@ -31,6 +39,7 @@
     "fluent-ffmpeg": "^2.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-dropzone": "^14.2.3",
     "react-scripts": "5.0.1",
     "recoil": "^0.7.7",
     "typescript": "^4.9.5",
