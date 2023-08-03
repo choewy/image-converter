@@ -1,15 +1,22 @@
-import { AppComponents } from './app.components';
-
-const appComponent = AppComponents.of();
+import {
+  CompleteFileList,
+  FileDropZone,
+  ListWrapper,
+  PageContainer,
+  SelectFileList,
+  TranscodingFileList,
+} from './components';
 
 function App() {
   return (
-    <appComponent.renderContainer>
-      <appComponent.renderHeader />
-      <appComponent.renderSelectList />
-      <appComponent.renderProcessList />
-      <appComponent.renderCompleteList />
-    </appComponent.renderContainer>
+    <PageContainer>
+      <FileDropZone />
+      <ListWrapper>
+        <SelectFileList />
+        <TranscodingFileList />
+        <CompleteFileList />
+      </ListWrapper>
+    </PageContainer>
   );
 }
 

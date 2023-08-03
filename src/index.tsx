@@ -3,13 +3,15 @@ import './index.css';
 import ReactDOM from 'react-dom/client';
 import reportWebVitals from './reportWebVitals';
 
-import { App } from '@/app';
+import { App } from './app';
 import { RecoilRoot, RecoilEnv } from 'recoil';
+import { CssBaseline } from '@mui/material';
 
 RecoilEnv.RECOIL_DUPLICATE_ATOM_KEY_CHECKING_ENABLED = false;
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <RecoilRoot>
+    <CssBaseline />
     <App />
   </RecoilRoot>,
 );
