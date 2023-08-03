@@ -1,9 +1,11 @@
 import Os from 'os';
+import Fs from 'fs';
 import Path from 'path';
 import Ffmpeg from 'fluent-ffmpeg';
 
 export class Module {
   private readonly os = window.require('os') as typeof Os;
+  private readonly fs = window.require('fs') as typeof Fs;
   private readonly path = window.require('path') as typeof Path;
   private readonly ffmpeg = window.require('fluent-ffmpeg') as typeof Ffmpeg;
 
@@ -13,6 +15,10 @@ export class Module {
 
   public getOs() {
     return this.os;
+  }
+
+  public getFs() {
+    return this.fs;
   }
 
   public getPath() {
