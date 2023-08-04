@@ -13,7 +13,7 @@ export const FileDropZone: FC = () => {
     useFsAccessApi: false,
     accept: {
       'image/*': ['.jpg', '.jpe', '.jpeg', '.png', '.webp', '.gif', '.tif', '.tiff'],
-      'video/*': ['.webp', '.mp4', 'm4v', '.avi', '.wmv', '.mwa', '.asf', '.mkv', '.mov'],
+      'video/*': ['.webm', '.mp4', 'm4v', '.avi', '.wmv', '.mwa', '.asf', '.mkv', '.mov'],
     },
   });
 
