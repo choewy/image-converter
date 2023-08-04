@@ -1,36 +1,55 @@
-const ffmpeg = require('fluent-ffmpeg');
-
-ffmpeg.setFfmpegPath(require('ffmpeg-static-electron').path);
-ffmpeg.setFfprobePath(require('ffprobe-static-electron').path);
-
-const { app, BrowserWindow } = require('electron');
-
+const { app, BrowserWindow, screen } = require('electron');
+const isDevelopment = require('electron-is-dev');
 const path = require('path');
 
-const devTools = require('electron-is-dev');
+let window = null;
 
 const createWindow = () => {
-  const window = new BrowserWindow({
-    width: 900,
-    height: 680,
+  const size = screen.getPrimaryDisplay().workAreaSize;
+
+  window = new BrowserWindow({
+    title: 'Image Converter',
+    width: size.width,
+    height: size.height,
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true,
       enableRemoteModule: true,
       contextIsolation: false,
-      devTools,
+      devTools: isDevelopment,
     },
   });
 
-  window.loadURL(devTools ? 'http://localhost:8000' : `file://${path.join(__dirname, '../build/index.html')}`);
+  let indexPath;
 
-  if (devTools) {
+  if (isDevelopment) {
     window.webContents.openDevTools({ mode: 'detach' });
+    indexPath = 'http://localhost:8000';
+  } else {
+    indexPath = `file://${path.join(__dirname, '../build/index.html')}`;
   }
 
+  window.loadURL(indexPath);
+  window.setMenuBarVisibility(false);
   window.setResizable(true);
-  window.on('closed', () => (window = null));
   window.focus();
+
+  window.on('closed', () => {
+    window = null;
+  });
 };
 
 app.on('ready', createWindow);
-app.on('window-all-closed', app.quit);
+app.on('window-all-closed', () => {
+  if (process.platform === 'darwin') {
+    return;
+  }
+
+  app.quit();
+});
+
+app.on('activate', () => {
+  if (window === null) {
+    createWindow();
+  }
+});
