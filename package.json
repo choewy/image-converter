@@ -5,16 +5,16 @@
   "homepage": "./",
   "main": "./public/electron.js",
   "build": {
-    "productName": "Image Converter ",
+    "productName": "Image Converter",
     "asar": true,
     "appId": "org.sss.electron-react"
   },
   "scripts": {
-    "react-start": "craco start",
+    "react-start": "env-cmd -f .env craco start",
     "react-build": "craco build",
     "react-test": "craco test",
     "react-eject": "craco eject",
-    "start:react": "cross-env NODE_ENV=development BROWSER=none npm run react-start",
+    "start:react": "cross-env PORT=8000 NODE_ENV=development BROWSER=none npm run react-start",
     "start:electron": "wait-on http://localhost:8000 && electron .",
     "start": "concurrently \"npm run start:react\" \"npm run start:electron\"",
     "build": "npm run react-build && electron-builder",
