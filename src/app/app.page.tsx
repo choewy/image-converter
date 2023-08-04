@@ -5,6 +5,7 @@ import {
   PageContainer,
   SelectFileList,
   TranscodingFileList,
+  WorkerList,
 } from './components';
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
       <ListWrapper>
         <SelectFileList />
         <TranscodingFileList />
+        <WorkerList />
         <CompleteFileList />
       </ListWrapper>
     </PageContainer>

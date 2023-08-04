@@ -1,19 +1,27 @@
 import { useCallback } from 'react';
 
-import { FfmpegFile, FfmpegService, ffmpegService } from '@/core';
-import { FileListStore, fileListStore } from '@/store';
+import { FfmpegFile, FfmpegService, ffmpegService, module } from '@/core';
+import { FileListStore, FileListStoreValue, WorkerStore, fileListStore, workerStore } from '@/store';
 
 export class AppService {
   public static of() {
     return new AppService();
   }
 
+  private readonly childProcess: typeof import('child_process');
   private readonly ffmpegService: FfmpegService;
+  private readonly workerStore: WorkerStore;
   private readonly fileListStore: FileListStore;
 
   constructor() {
+    this.childProcess = module.getChildProcess();
     this.ffmpegService = ffmpegService;
+    this.workerStore = workerStore;
     this.fileListStore = fileListStore;
+  }
+
+  public get workers() {
+    return this.workerStore.useValue().workers;
   }
 
   public get selectFiles() {
@@ -50,14 +58,14 @@ export class AppService {
     );
   }
 
-  public useOnDeleteSelectFileHandler() {
+  public useOnDeleteFileHandler(property: keyof FileListStoreValue) {
     const setFileList = this.fileListStore.useSetState();
 
     return useCallback(
-      (index: number) => () =>
+      (file: FfmpegFile) => () =>
         setFileList((prev) => ({
           ...prev,
-          selectFiles: prev.selectFiles.filter((_, i) => index !== i),
+          [property]: prev[property].filter(({ key }) => key !== file.key),
         })),
       [setFileList],
     );
@@ -152,9 +160,21 @@ export class AppService {
         selectFiles: prev.selectFiles.filter((file) => !!file.hasError),
         transcodingFiles: prev.selectFiles
           .filter((file) => !file.hasError)
-          .map((file) => this.ffmpegService.transcode({ ...file }, onProgress(file.key), onError(file.key))),
+          .map((file) => this.ffmpegService.transcode(file.dupliate(), onProgress(file.key), onError(file.key))),
       }));
     }, [setFileList]);
+  }
+
+  public useOnOpenDirectory() {
+    return useCallback(
+      (file: FfmpegFile) => () => {
+        const split = file.path.split('/');
+        const directory = split.slice(0, split.length - 1).join('/');
+
+        this.childProcess.execSync(['open', directory].join(' '));
+      },
+      [],
+    );
   }
 }
 

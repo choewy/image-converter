@@ -11,6 +11,10 @@ export const FileDropZone: FC = () => {
   const dropHook = useDropzone({
     onDrop: pushSelectFiles,
     useFsAccessApi: false,
+    accept: {
+      'image/*': ['.jpg', '.jpe', '.jpeg', '.png', '.webp', '.gif', '.tif', '.tiff'],
+      'video/*': ['.webp', '.mp4', 'm4v', '.avi', '.wmv', '.mwa', '.asf', '.mkv', '.mov'],
+    },
   });
 
   const boxProps = dropHook.getRootProps();
