@@ -4,9 +4,23 @@ export class Module {
   private readonly path = window.require('path') as typeof import('path');
   private readonly ffmpeg = window.require('fluent-ffmpeg') as typeof import('fluent-ffmpeg');
   private readonly childProcess = window.require('child_process') as typeof import('child_process');
+  private readonly sharp = window.require('sharp') as typeof import('sharp');
 
   public static of() {
     return new Module();
+  }
+
+  constructor() {
+    let ffmpegStaticPath = window.require('ffmpeg-static-electron').path;
+    let ffprobeStaticPath = window.require('ffprobe-static-electron').path;
+
+    switch (process.platform) {
+      case 'darwin':
+        break;
+    }
+
+    this.ffmpeg.setFfmpegPath(ffmpegStaticPath);
+    this.ffmpeg.setFfprobePath(ffprobeStaticPath);
   }
 
   public getOs() {
@@ -23,6 +37,10 @@ export class Module {
 
   public getFfmpeg() {
     return this.ffmpeg;
+  }
+
+  public getSharp() {
+    return this.sharp;
   }
 
   public getChildProcess() {
