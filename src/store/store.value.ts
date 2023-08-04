@@ -1,6 +1,6 @@
-import { FfmpegFile, FfmpegWorker, module } from '@/core';
+import { FfmpegFileStoreImpl, FfmpegFile, FfmpegWorker, FfmpegWorkerStoreImpl, module } from '@/core';
 
-export class FileListStoreValue {
+export class FileListStoreValue implements FfmpegFileStoreImpl {
   selectFiles: FfmpegFile[];
   transcodingFiles: FfmpegFile[];
   completeFiles: FfmpegFile[];
@@ -16,7 +16,7 @@ export class FileListStoreValue {
   }
 }
 
-export class WorkerStoreValue {
+export class WorkerStoreValue implements FfmpegWorkerStoreImpl {
   running: boolean;
   workers: FfmpegWorker[];
 
@@ -31,7 +31,6 @@ export class WorkerStoreValue {
     const activeRange = workerCount === 1 ? 1 : Math.floor(workerCount / 2);
 
     this.running = false;
-
     this.workers = [];
 
     for (let i = 1; i <= workerCount; i++) {
