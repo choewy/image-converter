@@ -1,7 +1,14 @@
 import { v4 } from 'uuid';
 import { FfmpegCommand } from 'fluent-ffmpeg';
+import { plainToInstance } from 'class-transformer';
 
-import { FfmpegWorkerStatus } from './enums';
+import { FfmpegStatus } from './enums';
+import { SetterOrUpdater } from 'recoil';
+import { FfmpegFileStoreImpl, FfmpegWorkerStoreImpl } from './interfaces';
+import { ffmpegService } from './ffmpeg.service';
+
+const WAIT_MIN_TIME = 600;
+const WAIT_MAX_TIME = 3000;
 
 export class FfmpegFile {
   public static of(file: File) {
@@ -14,13 +21,13 @@ export class FfmpegFile {
 
   name: string;
   path: string;
-
+  savePath: string | null = null;
   hasSound: boolean = false;
   frames: number | null = null;
   error: any | null = null;
   hasError: boolean = false;
-  progress: number = 0;
   command: FfmpegCommand | null = null;
+  status: FfmpegStatus = FfmpegStatus.WAITING;
 
   constructor(name: string, path: string) {
     this.name = name;
@@ -28,45 +35,96 @@ export class FfmpegFile {
   }
 
   public dupliate(): FfmpegFile {
-    return Object.assign({}, this);
+    return plainToInstance(FfmpegFile, this);
+  }
+
+  public setStatus(status: FfmpegStatus) {
+    const file = this.dupliate();
+
+    file.status = status;
+
+    return file;
+  }
+
+  public setName(name: string) {
+    const file = this.dupliate();
+
+    file.name = name;
+
+    return file;
+  }
+
+  public setSavePath(savePath: string) {
+    const file = this.dupliate();
+
+    file.savePath = savePath;
+
+    return file;
+  }
+
+  public setError(e?: any) {
+    const file = this.dupliate();
+
+    file.error = e;
+    file.hasError = !!e;
+    file.command = null;
+
+    return file;
   }
 }
 
 export class FfmpegWorker {
   public static of(activeRange: number, currentIndex: number) {
-    return new FfmpegWorker(activeRange < currentIndex);
+    return new FfmpegWorker(activeRange, currentIndex);
   }
 
-  readonly key = v4();
+  readonly key: string;
 
   file: FfmpegFile | null = null;
-  status: FfmpegWorkerStatus = FfmpegWorkerStatus.WAITING;
+  status: FfmpegStatus = FfmpegStatus.WAITING;
+  progress: number = 0;
   disabled: boolean;
+  timer: NodeJS.Timer | null = null;
 
-  constructor(disabled = false) {
-    this.disabled = disabled;
+  constructor(activeRange: number, currentIndex: number) {
+    this.key = `WORKER #${currentIndex}`;
+    this.disabled = activeRange < currentIndex;
   }
 
   public isWaiting(): boolean {
-    return [FfmpegWorkerStatus.WAITING].includes(this.status);
+    return [FfmpegStatus.WAITING].includes(this.status);
   }
 
   public isPaused(): boolean {
-    return [FfmpegWorkerStatus.PAUSED].includes(this.status);
+    return [FfmpegStatus.PAUSED].includes(this.status);
   }
 
   public isRunning(): boolean {
-    return [FfmpegWorkerStatus.RUNNING].includes(this.status);
+    return [FfmpegStatus.RUNNING].includes(this.status);
   }
 
   public dupliate(): FfmpegWorker {
-    return Object.assign({}, this);
+    return plainToInstance(FfmpegWorker, this);
   }
 
-  public setFile(file?: FfmpegFile): FfmpegWorker {
+  public setFile(file: FfmpegFile | null): FfmpegWorker {
     const worker = this.dupliate();
 
-    worker.file = file || null;
+    worker.file = file;
+
+    if (!file) {
+      worker.file = null;
+      worker.progress = 0;
+      worker.status = FfmpegStatus.WAITING;
+    }
+
+    return worker;
+  }
+
+  public setProgress(progress: number) {
+    const worker = this.dupliate();
+
+    worker.progress = progress;
 
     return worker;
   }
@@ -79,7 +137,7 @@ export class FfmpegWorker {
     return worker;
   }
 
-  public setStatus(status: FfmpegWorkerStatus): FfmpegWorker {
+  public setStatus(status: FfmpegStatus): FfmpegWorker {
     const worker = this.dupliate();
 
     worker.status = status;
@@ -87,11 +145,84 @@ export class FfmpegWorker {
     return worker;
   }
 
-  public stop(): void {
-    if (this.status === FfmpegWorkerStatus.WAITING || !this.file || !this.file.command) {
+  public run(setWorkers: SetterOrUpdater<FfmpegWorkerStoreImpl>, setFiles: SetterOrUpdater<FfmpegFileStoreImpl>) {
+    if (!this.file) {
       return;
     }
 
-    this.file.command.kill('SIGKILL');
+    const onProgress = (progress: number) => {
+      if (!this.file) {
+        return;
+      }
+
+      if (progress < 100) {
+        setWorkers((prev) => ({
+          ...prev,
+          workers: prev.workers.map((w) => (w.key === this.key ? this.setProgress(progress) : w)),
+        }));
+      } else {
+        setFiles((prev) => ({
+          ...prev,
+          transcodingFiles: prev.transcodingFiles.filter((file) => file.key !== this.file.key),
+          completeFiles: prev.completeFiles.find((f) => f.key === this.file.key)
+            ? prev.completeFiles
+            : [...prev.completeFiles].concat(this.file),
+        }));
+
+        setWorkers((prev) => ({
+          ...prev,
+          workers: prev.workers.map((w) =>
+            w.key === this.key ? this.setFile(null).setStatus(FfmpegStatus.WAITING) : w,
+          ),
+        }));
+      }
+    };
+
+    const onError = (e?: any) => {
+      if (!this.file) {
+        return;
+      }
+
+      setFiles((prev) => {
+        let target = prev.transcodingFiles.find((f) => f.key === this.file.key);
+
+        if (!target) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          transcodingFiles: prev.transcodingFiles.filter((f) => f.key !== this.file.key),
+          completeFiles: prev.completeFiles.find((f) => f.key === target.key)
+            ? prev.completeFiles
+            : [...prev.completeFiles].concat(target.setError(e)),
+        };
+      });
+
+      setWorkers((prev) => ({
+        ...prev,
+        workers: prev.workers.map((w) => (w.key === this.key ? this.setFile(null) : w)),
+      }));
+    };
+
+    this.timer = setTimeout(() => {
+      ffmpegService.transcode(this.file, onProgress, onError);
+    }, Math.floor(Math.random() * (WAIT_MAX_TIME - WAIT_MIN_TIME)) + WAIT_MIN_TIME);
+
+    return this;
+  }
+
+  public stop(): FfmpegWorker {
+    const worker = this.setProgress(0).setStatus(FfmpegStatus.PAUSED);
+
+    if (this.timer) {
+      clearTimeout(this.timer);
+    }
+
+    if ((this.isPaused() || this.isRunning()) && this.file && this.file.command) {
+      this.file.command.kill('SIGKILL');
+    }
+
+    return worker;
   }
 }
