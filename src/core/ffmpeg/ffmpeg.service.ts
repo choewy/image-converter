@@ -85,9 +85,12 @@ export class FfmpegService {
       })
       .on('error', (e) => {
         onError(e);
+        command.kill('SIGKILL');
       })
       .on('end', () => {
-        onProgress(100);
+        setTimeout(() => {
+          onProgress(100);
+        }, 1_000);
       });
 
     command.outputOption(options);

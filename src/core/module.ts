@@ -1,13 +1,9 @@
-import Os from 'os';
-import Fs from 'fs';
-import Path from 'path';
-import Ffmpeg from 'fluent-ffmpeg';
-
 export class Module {
-  private readonly os = window.require('os') as typeof Os;
-  private readonly fs = window.require('fs') as typeof Fs;
-  private readonly path = window.require('path') as typeof Path;
-  private readonly ffmpeg = window.require('fluent-ffmpeg') as typeof Ffmpeg;
+  private readonly os = window.require('os') as typeof import('os');
+  private readonly fs = window.require('fs') as typeof import('fs');
+  private readonly path = window.require('path') as typeof import('path');
+  private readonly ffmpeg = window.require('fluent-ffmpeg') as typeof import('fluent-ffmpeg');
+  private readonly childProcess = window.require('child_process') as typeof import('child_process');
 
   public static of() {
     return new Module();
@@ -27,6 +23,10 @@ export class Module {
 
   public getFfmpeg() {
     return this.ffmpeg;
+  }
+
+  public getChildProcess() {
+    return this.childProcess;
   }
 }
 
