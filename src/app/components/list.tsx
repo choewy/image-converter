@@ -1,16 +1,5 @@
 import { FC, Fragment, useCallback } from 'react';
-import {
-  Box,
-  Divider,
-  IconButton,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Paper,
-  Typography,
-} from '@mui/material';
+import { Box, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Paper } from '@mui/material';
 import {
   CheckCircle,
   CloudDone,
@@ -19,18 +8,25 @@ import {
   DoDisturbOn,
   Error,
   FolderOpen,
+  Pause,
   PauseCircle,
   PlayArrow,
   Refresh,
   RunCircle,
+  TransferWithinAStation,
 } from '@mui/icons-material';
 
-import { appService } from '../app.service';
 import { FfmpegWorker } from '@/core';
+
+import { appService } from '../app.service';
+import { ListToolbar } from './list-toolbar';
 
 export const WorkerList: FC = () => {
   const workers = appService.workers;
+  const running = !!workers.find((worker) => worker.isRunning());
   const disabled = workers.filter((worker) => worker.isWaiting()).length === workers.length;
+
+  const onChangeActive = appService.useOnChangeWorkerActive();
 
   const statusIcon = useCallback((worker: FfmpegWorker) => {
     if (worker.disabled) {
@@ -52,25 +48,33 @@ export const WorkerList: FC = () => {
 
   return (
     <Paper sx={{ width: 500, height: 630, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography color="GrayText" sx={{ ml: 1 }}>
-          PROCESS
-        </Typography>
+      <ListToolbar title="프로세스">
         <Box>
           <IconButton size="small" disabled={disabled}>
-            <Refresh fontSize="small" />
+            <TransferWithinAStation fontSize="small" color={running ? 'info' : 'disabled'} />
           </IconButton>
         </Box>
-      </Box>
-      <Divider />
+      </ListToolbar>
       <List>
-        {workers.map((worker, i) => (
-          <ListItem key={worker.key}>
-            <ListItemIcon>{statusIcon(worker)}</ListItemIcon>
-            <ListItemText>{`WORKER #${i + 1}`}</ListItemText>
-            {worker.file && <LinearProgress variant="determinate" value={worker.file.progress} />}
-          </ListItem>
-        ))}
+        {workers.map((worker, i) => {
+          return (
+            <Fragment key={worker.key}>
+              <ListItem>
+                <ListItemIcon>
+                  <IconButton size="small" disabled={!worker.isWaiting()} onClick={onChangeActive(worker)}>
+                    {statusIcon(worker)}
+                  </IconButton>
+                </ListItemIcon>
+                <ListItemText
+                  sx={{
+                    color: worker.disabled ? '#888' : '#fff',
+                  }}
+                >{`WORKER #${i + 1}`}</ListItemText>
+              </ListItem>
+              <LinearProgress variant="determinate" value={worker.progress || 0} />
+            </Fragment>
+          );
+        })}
       </List>
     </Paper>
   );
@@ -79,16 +83,15 @@ export const WorkerList: FC = () => {
 export const SelectFileList: FC = () => {
   const selectFiles = appService.selectFiles;
 
-  const onClickStart = appService.useOnStartTranscodeFiles();
-  const onClickReset = appService.useOnResetSelectFiles();
+  appService.useOnDequeue();
+
+  const onClickStart = appService.useOnTranscodeStart();
+  const onClickReset = appService.useOnResetFilesHandler('selectFiles');
   const onClickDeleteHandler = appService.useOnDeleteFileHandler('selectFiles');
 
   return (
     <Paper sx={{ width: 500, height: 630, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography color="GrayText" sx={{ ml: 1 }}>
-          선택한 파일 목록
-        </Typography>
+      <ListToolbar title="파일 목록">
         <Box>
           <IconButton size="small" disabled={selectFiles.length === 0} onClick={onClickStart}>
             <PlayArrow fontSize="small" />
@@ -97,8 +100,7 @@ export const SelectFileList: FC = () => {
             <Refresh fontSize="small" />
           </IconButton>
         </Box>
-      </Box>
-      <Divider />
+      </ListToolbar>
       <List>
         {selectFiles.map((file) => (
           <ListItem key={file.key}>
@@ -117,40 +119,45 @@ export const SelectFileList: FC = () => {
 };
 
 export const TranscodingFileList: FC = () => {
+  const running = appService.running;
   const transcodingFiles = appService.transcodingFiles;
 
-  const onClickReset = appService.useOnResetTranscodingFiles();
+  const onClickPause = appService.useOnTranscodeStop();
+  const onClickRestart = appService.useOnTranscodeRestart();
+  const onClickReset = appService.useOnResetFilesHandler('transcodingFiles');
   const onClickDeleteHandler = appService.useOnDeleteFileHandler('transcodingFiles');
 
   return (
     <Paper sx={{ width: 500, height: 630, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography color="GrayText" sx={{ ml: 1 }}>
-          변환 대기 목록
-        </Typography>
+      <ListToolbar title="변환 대기">
         <Box>
+          {transcodingFiles.length === 0 ? (
+            <Fragment />
+          ) : running ? (
+            <IconButton size="small" disabled={transcodingFiles.length === 0} onClick={onClickPause}>
+              <Pause fontSize="small" />
+            </IconButton>
+          ) : (
+            <IconButton size="small" disabled={transcodingFiles.length === 0} onClick={onClickRestart}>
+              <PlayArrow fontSize="small" />
+            </IconButton>
+          )}
           <IconButton size="small" disabled={transcodingFiles.length === 0} onClick={onClickReset}>
             <Refresh fontSize="small" />
           </IconButton>
         </Box>
-      </Box>
-      <Divider />
+      </ListToolbar>
       <List>
         {transcodingFiles.map((file) => (
-          <Fragment key={file.key}>
-            <ListItem key={file.key}>
-              <ListItemIcon>
-                {file.hasError ? <Error color="error" fontSize="small" /> : <CloudDone color="info" fontSize="small" />}
-              </ListItemIcon>
-              <ListItemText>{file.name}</ListItemText>
-              <IconButton size="small" onClick={onClickDeleteHandler(file)}>
-                <Delete fontSize="small" />
-              </IconButton>
-            </ListItem>
-            <Box sx={{ width: '100%' }}>
-              <LinearProgress variant="determinate" value={file.progress} />
-            </Box>
-          </Fragment>
+          <ListItem key={file.key}>
+            <ListItemIcon>
+              {file.hasError ? <Error color="error" fontSize="small" /> : <CloudDone color="info" fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText>{file.name}</ListItemText>
+            <IconButton size="small" onClick={onClickDeleteHandler(file)}>
+              <Delete fontSize="small" />
+            </IconButton>
+          </ListItem>
         ))}
       </List>
     </Paper>
@@ -160,23 +167,18 @@ export const TranscodingFileList: FC = () => {
 export const CompleteFileList: FC = () => {
   const completeFiles = appService.completeFiles;
 
-  const onClickReset = appService.useOnResetTranscodingFiles();
+  const onClickReset = appService.useOnResetFilesHandler('completeFiles');
   const onClickOpenDirectory = appService.useOnOpenDirectory();
-  const onClickDeleteHandler = appService.useOnDeleteFileHandler('completeFiles');
 
   return (
     <Paper sx={{ width: 500, height: 630, overflow: 'auto' }}>
-      <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography color="GrayText" sx={{ ml: 1 }}>
-          변환이 완료된 파일 목록
-        </Typography>
+      <ListToolbar title="변환 완료">
         <Box>
           <IconButton size="small" disabled={completeFiles.length === 0} onClick={onClickReset}>
             <Refresh fontSize="small" />
           </IconButton>
         </Box>
-      </Box>
-      <Divider />
+      </ListToolbar>
       <List>
         {completeFiles.map((file) => (
           <ListItem key={file.key}>
@@ -190,9 +192,6 @@ export const CompleteFileList: FC = () => {
             <ListItemText>{file.name}</ListItemText>
             <IconButton size="small" onClick={onClickOpenDirectory(file)}>
               <FolderOpen fontSize="small" />
-            </IconButton>
-            <IconButton size="small" onClick={onClickDeleteHandler(file)}>
-              <Delete fontSize="small" />
             </IconButton>
           </ListItem>
         ))}
