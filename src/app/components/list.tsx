@@ -1,25 +1,21 @@
-import { FC, Fragment, useCallback } from 'react';
+import { FC, Fragment } from 'react';
 import { Box, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Paper } from '@mui/material';
 import {
   CheckCircle,
   CloudDone,
   Delete,
-  DoDisturbOff,
-  DoDisturbOn,
   Error,
   FolderOpen,
-  Pause,
-  PauseCircle,
   PlayArrow,
+  PlayCircleFilledRounded,
   Refresh,
-  RunCircle,
+  StopCircleRounded,
   TransferWithinAStation,
 } from '@mui/icons-material';
 
-import { FfmpegWorker } from '@/core';
-
 import { appService } from '../app.service';
 import { ListToolbar } from './list-toolbar';
+import { WorkerStatusIcon } from './icons';
 
 export const WorkerList: FC = () => {
   const workers = appService.workers;
@@ -27,24 +23,8 @@ export const WorkerList: FC = () => {
   const disabled = workers.filter((worker) => worker.isWaiting()).length === workers.length;
 
   const onChangeActive = appService.useOnChangeWorkerActive();
-
-  const statusIcon = useCallback((worker: FfmpegWorker) => {
-    if (worker.disabled) {
-      return <DoDisturbOff fontSize="small" color="disabled" />;
-    }
-
-    if (worker.isWaiting()) {
-      return <DoDisturbOn fontSize="small" />;
-    }
-
-    if (worker.isPaused()) {
-      return <PauseCircle fontSize="small" color="warning" />;
-    }
-
-    if (worker.isRunning()) {
-      return <RunCircle fontSize="small" color="primary" />;
-    }
-  }, []);
+  const onClickStopHandler = appService.useOnClickStopHandler();
+  const onClickRunHandler = appService.useOnClickRunHandler();
 
   return (
     <Paper sx={{ width: 500, height: 630, overflow: 'auto' }}>
@@ -61,8 +41,8 @@ export const WorkerList: FC = () => {
             <Fragment key={worker.key}>
               <ListItem>
                 <ListItemIcon>
-                  <IconButton size="small" disabled={!worker.isWaiting()} onClick={onChangeActive(worker)}>
-                    {statusIcon(worker)}
+                  <IconButton size="small" disabled={worker.disabledChange()} onClick={onChangeActive(worker)}>
+                    <WorkerStatusIcon worker={worker} />
                   </IconButton>
                 </ListItemIcon>
                 <ListItemText
@@ -70,6 +50,19 @@ export const WorkerList: FC = () => {
                     color: worker.disabled ? '#888' : '#fff',
                   }}
                 >{`WORKER #${i + 1}`}</ListItemText>
+                {worker.canStopOrRerun() ? (
+                  worker.stopped ? (
+                    <IconButton size="small" onClick={onClickRunHandler(worker)}>
+                      <PlayCircleFilledRounded fontSize="small" color="action" />
+                    </IconButton>
+                  ) : (
+                    <IconButton size="small" onClick={onClickStopHandler(worker)}>
+                      <StopCircleRounded fontSize="small" color="action" />
+                    </IconButton>
+                  )
+                ) : (
+                  <Fragment />
+                )}
               </ListItem>
               <LinearProgress variant="determinate" value={worker.progress || 0} />
             </Fragment>
@@ -82,8 +75,6 @@ export const WorkerList: FC = () => {
 
 export const SelectFileList: FC = () => {
   const selectFiles = appService.selectFiles;
-
-  appService.useOnDequeue();
 
   const onClickStart = appService.useOnTranscodeStart();
   const onClickReset = appService.useOnResetFilesHandler('selectFiles');
@@ -122,8 +113,8 @@ export const TranscodingFileList: FC = () => {
   const running = appService.running;
   const transcodingFiles = appService.transcodingFiles;
 
-  const onClickPause = appService.useOnTranscodeStop();
-  const onClickRestart = appService.useOnTranscodeRestart();
+  appService.useOnDequeue();
+
   const onClickReset = appService.useOnResetFilesHandler('transcodingFiles');
   const onClickDeleteHandler = appService.useOnDeleteFileHandler('transcodingFiles');
 
@@ -131,17 +122,6 @@ export const TranscodingFileList: FC = () => {
     <Paper sx={{ width: 500, height: 630, overflow: 'auto' }}>
       <ListToolbar title="변환 대기">
         <Box>
-          {transcodingFiles.length === 0 ? (
-            <Fragment />
-          ) : running ? (
-            <IconButton size="small" disabled={transcodingFiles.length === 0} onClick={onClickPause}>
-              <Pause fontSize="small" />
-            </IconButton>
-          ) : (
-            <IconButton size="small" disabled={transcodingFiles.length === 0} onClick={onClickRestart}>
-              <PlayArrow fontSize="small" />
-            </IconButton>
-          )}
           <IconButton size="small" disabled={transcodingFiles.length === 0} onClick={onClickReset}>
             <Refresh fontSize="small" />
           </IconButton>

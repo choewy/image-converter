@@ -1,6 +1,14 @@
 import { useCallback, useEffect } from 'react';
 
-import { FfmpegFile, FfmpegService, FfmpegStatus, FfmpegWorker, Logger, ffmpegService, module } from '@/core';
+import {
+  TranscodeFile,
+  TranscodeService,
+  TranscodeWorker,
+  transcodeService,
+  module,
+  transcodeStorage,
+  TranscodeWorkerStatus,
+} from '@/core';
 import { FileListStore, FileListStoreValue, WorkerStore, fileListStore, workerStore } from '@/store';
 
 export class AppService {
@@ -8,16 +16,14 @@ export class AppService {
     return new AppService();
   }
 
-  private readonly logger = Logger.of(AppService.name);
-
   private readonly childProcess: typeof import('child_process');
-  private readonly ffmpegService: FfmpegService;
+  private readonly transcodeService: TranscodeService;
   private readonly workerStore: WorkerStore;
   private readonly fileListStore: FileListStore;
 
   constructor() {
     this.childProcess = module.getChildProcess();
-    this.ffmpegService = ffmpegService;
+    this.transcodeService = transcodeService;
     this.workerStore = workerStore;
     this.fileListStore = fileListStore;
   }
@@ -53,7 +59,9 @@ export class AppService {
           return;
         }
 
-        const selectFiles: FfmpegFile[] = await Promise.all(files.map((file) => this.ffmpegService.ffprobe(file)));
+        const selectFiles: TranscodeFile[] = await Promise.all(
+          files.map((file) => this.transcodeService.ffprobe(file)),
+        );
 
         setFileList((prev) => ({
           ...prev,
@@ -68,7 +76,7 @@ export class AppService {
     const setFileList = this.fileListStore.useSetState();
 
     return useCallback(
-      (file: FfmpegFile) => () =>
+      (file: TranscodeFile) => () =>
         setFileList((prev) => ({
           ...prev,
           [property]: prev[property].filter(({ key }) => key !== file.key),
@@ -90,37 +98,69 @@ export class AppService {
     );
   }
 
-  public useOnDequeue() {
-    const [{ transcodingFiles }, setFiles] = this.fileListStore.useState();
-    const [{ running, workers }, setWorkers] = this.workerStore.useState();
+  public useOnClickStopHandler() {
+    const setWorkers = this.workerStore.useSetState();
 
-    const file = transcodingFiles.find((f) => [FfmpegStatus.WAITING, FfmpegStatus.PAUSED].includes(f.status));
-    const worker = workers.find((w) => !w.disabled && [FfmpegStatus.WAITING, FfmpegStatus.PAUSED].includes(w.status));
+    return useCallback(
+      (worker: TranscodeWorker) => () => {
+        transcodeStorage.killTimeout(worker.key);
+        transcodeStorage.killCommand(worker.key);
+
+        setWorkers((prev) => ({
+          ...prev,
+          workers: prev.workers.map((w) =>
+            w.key === worker.key ? w.setStatus(TranscodeWorkerStatus.PAUSED).setStopped(true) : w,
+          ),
+        }));
+      },
+      [setWorkers],
+    );
+  }
+
+  public useOnClickRunHandler() {
+    const setWorkers = this.workerStore.useSetState();
+
+    return useCallback(
+      (worker: TranscodeWorker) => () => {
+        transcodeStorage.runCommand(worker.key);
+
+        setWorkers((prev) => ({
+          ...prev,
+          workers: prev.workers.map((w) =>
+            w.key === worker.key ? w.setStatus(TranscodeWorkerStatus.RUNNING).setStopped(false) : w,
+          ),
+        }));
+      },
+      [setWorkers],
+    );
+  }
+
+  public useOnDequeue() {
+    const [{ running, workers }, setWorkers] = this.workerStore.useState();
+    const [{ transcodingFiles }, setFiles] = this.fileListStore.useState();
+
+    const worker = workers.find((w) => w.canPrepare());
+    const file = transcodingFiles.find((f) => f.canConsume());
 
     useEffect(() => {
       if (!running || !file || !worker) {
-        return setWorkers((prev) => ({ ...prev }));
+        return;
       }
 
-      this.logger.debug({
-        file: `${file?.name} : ${file?.status}`,
-        worker: `${worker?.key} : ${worker?.status}`,
-      });
+      transcodeStorage.setFile(worker.key, file);
 
       setFiles((prev) => ({
         ...prev,
-        transcodingFiles: prev.transcodingFiles.map((f) =>
-          f.key === file.key ? file.setStatus(FfmpegStatus.RUNNING) : f,
-        ),
+        transcodingFiles: prev.transcodingFiles.map((f) => (f.key === file.key ? file.setConsume() : f)),
       }));
 
       setWorkers((prev) => ({
         ...prev,
         workers: prev.workers.map((w) =>
-          w.key !== worker.key ? w : w.setStatus(FfmpegStatus.RUNNING).setFile(file).run(setWorkers, setFiles),
+          w.key !== worker.key ? w : w.setStatus(TranscodeWorkerStatus.PREPARE).prepare(setWorkers, setFiles),
         ),
       }));
-    }, [running, file, worker, setWorkers]);
+    }, [running, file, worker, setFiles, setWorkers]);
   }
 
   public useOnTranscodeStart() {
@@ -138,65 +178,31 @@ export class AppService {
     }, [setFiles, setWorkers]);
   }
 
-  public useOnTranscodeStop() {
-    const setFiles = this.fileListStore.useSetState();
-    const [{ workers }, setWorkers] = this.workerStore.useState();
-
-    return useCallback(() => {
-      const hasFileWorkers = workers.filter((w) => !!w.file);
-
-      if (hasFileWorkers.length === 0) {
-        return;
-      }
-
-      setWorkers((prev) => ({
-        ...prev,
-        running: false,
-        workers: prev.workers.map((worker) => worker.stop()),
-      }));
-
-      setFiles((prev) => {
-        const transcodingFiles = [...prev.transcodingFiles];
-
-        for (const worker of hasFileWorkers) {
-          if (!worker.file) {
-            continue;
-          }
-
-          const index = transcodingFiles.findIndex((f) => f.key === worker.file.key);
-
-          if (index > -1) {
-            transcodingFiles[index] = transcodingFiles[index].setStatus(FfmpegStatus.PAUSED);
-          } else {
-            transcodingFiles.push(worker.file.setStatus(FfmpegStatus.PAUSED));
-          }
-        }
-
-        return { ...prev, transcodingFiles };
-      });
-    }, [workers, setFiles, setWorkers]);
-  }
-
-  public useOnTranscodeRestart() {
-    const setWorkers = this.workerStore.useSetState();
-
-    return useCallback(() => {
-      setWorkers((prev) => ({
-        ...prev,
-        running: true,
-      }));
-    }, [setWorkers]);
-  }
-
   public useOnChangeWorkerActive() {
     const setWorkers = this.workerStore.useSetState();
 
     return useCallback(
-      (worker: FfmpegWorker) => () => {
-        setWorkers((prev) => ({
-          ...prev,
-          workers: prev.workers.map((w) => (w.key === worker.key ? w.setDisable(!w.disabled) : w)),
-        }));
+      (worker: TranscodeWorker) => () => {
+        if (worker.isWaiting()) {
+          setWorkers((prev) => ({
+            ...prev,
+            workers: prev.workers.map((w) => (w.key === worker.key ? w.setDisable(!w.disabled) : w)),
+          }));
+        } else {
+          setWorkers((prev) => ({
+            ...prev,
+            workers: prev.workers.map((w) =>
+              w.key === worker.key ? w.setDisable(!w.disabled).setStatus(TranscodeWorkerStatus.TEAR_DOWN) : w,
+            ),
+          }));
+
+          setTimeout(() => {
+            setWorkers((prev) => ({
+              ...prev,
+              workers: prev.workers.map((w) => (w.key === worker.key ? w.setStatus(TranscodeWorkerStatus.WAITING) : w)),
+            }));
+          }, this.transcodeService.getTeardownTime());
+        }
       },
       [setWorkers],
     );
@@ -204,7 +210,7 @@ export class AppService {
 
   public useOnOpenDirectory() {
     return useCallback(
-      (file: FfmpegFile) => () => {
+      (file: TranscodeFile) => () => {
         const split = file.path.split('/');
         const directory = split.slice(0, split.length - 1).join('/');
 
