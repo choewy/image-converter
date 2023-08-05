@@ -39,16 +39,14 @@ export class TranscodeStorage {
     }
   }
 
-  private beforeShutdownkillCommand(key: string) {
-    const command = this.commands[key] as any;
-
-    if (!command) {
+  private beforeShutdownkillCommand(key: string): void {
+    if (!this.commands[key]) {
       return;
     }
 
-    const outputs = command._outputs;
+    this.commands[key].kill('SIGKILL');
 
-    for (let output of outputs) {
+    for (let output of (this.commands[key] as any)._outputs) {
       const savePath = output.target;
 
       if (savePath && this.fs.existsSync(savePath)) {
