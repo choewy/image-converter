@@ -1,4 +1,5 @@
 export class Module {
+  private readonly electron = window.require('electron') as typeof import('electron');
   private readonly os = window.require('os') as typeof import('os');
   private readonly fs = window.require('fs') as typeof import('fs');
   private readonly path = window.require('path') as typeof import('path');
@@ -21,6 +22,10 @@ export class Module {
 
     this.ffmpeg.setFfmpegPath(ffmpegStaticPath);
     this.ffmpeg.setFfprobePath(ffprobeStaticPath);
+  }
+
+  public getIpc() {
+    return this.electron.ipcRenderer;
   }
 
   public getOs() {

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, screen } = require('electron');
+const { app, BrowserWindow, screen, ipcMain } = require('electron');
 const isDevelopment = require('electron-is-dev');
 const path = require('path');
 
@@ -29,23 +29,39 @@ const createWindow = () => {
     indexPath = `file://${path.join(__dirname, '../build/index.html')}`;
   }
 
+  window.on('close', (e) => {
+    e.preventDefault();
+
+    window.webContents.send('before-close');
+  });
+
   window.loadURL(indexPath);
   window.setMenuBarVisibility(false);
   window.setResizable(true);
   window.focus();
-
-  window.on('closed', () => {
-    window = null;
-  });
 };
 
-app.on('ready', createWindow);
+ipcMain.on('close', () => {
+  window.destroy();
+  window = null;
+});
+
+ipcMain.on('shutdown', () => {
+  app.exit(0);
+});
+
+app.on('before-quit', (e) => {
+  e.preventDefault();
+
+  window.webContents.send('before-shutdown');
+});
+
 app.on('window-all-closed', () => {
   if (process.platform === 'darwin') {
     return;
   }
 
-  app.quit();
+  window.webContents.send('before-shutdown');
 });
 
 app.on('activate', () => {
@@ -53,3 +69,5 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+app.on('ready', createWindow);
