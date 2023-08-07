@@ -32,6 +32,10 @@ const createWindow = () => {
   window.on('close', (e) => {
     e.preventDefault();
 
+    if (!window) {
+      return app.quit(0);
+    }
+
     window.webContents.send('before-close');
   });
 
@@ -53,15 +57,23 @@ ipcMain.on('shutdown', () => {
 app.on('before-quit', (e) => {
   e.preventDefault();
 
+  if (!window) {
+    return app.exit(0);
+  }
+
   window.webContents.send('before-shutdown');
 });
 
 app.on('window-all-closed', () => {
   if (process.platform === 'darwin') {
+    if (window) {
+      window.webContents.send('before-shutdown');
+    }
+
     return;
   }
 
-  window.webContents.send('before-shutdown');
+  app.quit(0);
 });
 
 app.on('activate', () => {
