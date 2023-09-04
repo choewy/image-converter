@@ -8,23 +8,11 @@ import { CssBaseline, ThemeProvider } from '@mui/material';
 
 import { theme } from '@/theme';
 import { App } from '@/app';
-import { module, transcodeStorage } from './core';
+import { IpcController } from '@/ipc';
 
 RecoilEnv.RECOIL_DUPLICATE_ATOM_KEY_CHECKING_ENABLED = false;
 
-const ipc = module.getIpc();
-
-ipc.on('before-close', () => {
-  transcodeStorage.beforeShutdown();
-
-  ipc.send('close');
-});
-
-ipc.on('before-shutdown', () => {
-  transcodeStorage.beforeShutdown();
-
-  ipc.send('shutdown');
-});
+IpcController.define();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <ThemeProvider theme={theme}>

@@ -1,6 +1,5 @@
 import { Logger, TranscodeWaitTime, module, transcodeStorage } from '@/core';
 import { TranscodeFile } from './transcode.file';
-import { kill } from 'process';
 
 export class TranscodeService {
   public static of() {
