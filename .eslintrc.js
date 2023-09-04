@@ -1,5 +1,10 @@
 module.exports = {
   root: true,
+  parserOptions: {
+    ecmaFeatures: { js: true },
+    ecmaVersion: 6,
+    sourceType: 'module',
+  },
   rules: {
     'react-native/no-inline-styles': 'off',
     'react-hooks/rules-of-hooks': 'off',
