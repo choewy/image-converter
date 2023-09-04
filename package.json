@@ -18,7 +18,7 @@
     "start:react": "cross-env PORT=8000 NODE_ENV=development BROWSER=none npm run react-start",
     "start:electron": "wait-on http://127.0.0.1:8000 && electron .",
     "start": "concurrently \"npm run start:react\" \"npm run start:electron\"",
-    "build": "npm run react-build && electron-builder --publish=never"
+    "build": "npm run react-build && electron-builder --mac --x64 --arm64 --publish=never"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
