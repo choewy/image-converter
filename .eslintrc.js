@@ -2,7 +2,7 @@ module.exports = {
   root: true,
   parserOptions: {
     ecmaFeatures: { js: true },
-    ecmaVersion: 6,
+    ecmaVersion: 13,
     sourceType: 'module',
   },
   rules: {
