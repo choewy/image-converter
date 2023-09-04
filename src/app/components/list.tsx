@@ -110,7 +110,6 @@ export const SelectFileList: FC = () => {
 };
 
 export const TranscodingFileList: FC = () => {
-  const running = appService.running;
   const transcodingFiles = appService.transcodingFiles;
 
   appService.useOnDequeue();

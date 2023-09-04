@@ -211,7 +211,7 @@ export class AppService {
   public useOnOpenDirectory() {
     return useCallback(
       (file: TranscodeFile) => () => {
-        const split = file.path.split('/');
+        const split = file.path.replaceAll(' ', '_').split('/');
         const directory = split.slice(0, split.length - 1).join('/');
 
         this.childProcess.execSync(['open', directory].join(' '));

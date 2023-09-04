@@ -22,6 +22,12 @@ export class TranscodeService {
 
   private createSavePath(file: TranscodeFile): TranscodeFile {
     const filePath = this.path.parse(file.path);
+    const dirPath = filePath.dir.replaceAll(' ', '_');
+
+    if (filePath.dir !== dirPath) {
+      this.fs.mkdirSync(dirPath, { recursive: true });
+    }
+
     const extension = file.hasSound ? 'webm' : 'webp';
 
     file = file.setName(filePath.name);
@@ -32,7 +38,7 @@ export class TranscodeService {
 
     while (true) {
       fileName = [file.name, extension].join('.');
-      savePath = this.path.join(filePath.dir, fileName);
+      savePath = this.path.join(dirPath, fileName);
 
       if (!this.fs.existsSync(savePath)) {
         file = file.setName(filePath.name);
