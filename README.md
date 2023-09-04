@@ -5,13 +5,9 @@
 
 ## Release
 
-### Latest(Intel)
+### Latest
 
-- [v0.1.3-mac-x64](https://github.com/choewy/image-converter/releases/tag/v0.1.3-mac-x64)
-
-### Latest(M1/M2)
-
-- [v0.1.3-mac-arm64](https://github.com/choewy/image-converter/releases/tag/v0.1.3-mac-arm64)
+- [v0.1.3-mac](https://github.com/choewy/image-converter/releases/tag/v0.1.3-mac)
 
 ### Old
 
