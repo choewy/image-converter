@@ -3,16 +3,14 @@ const electron = require('electron');
 const development = require('electron-is-dev');
 
 class ElectronWindow extends electron.BrowserWindow {
-  static define(app) {
-    return new ElectronWindow(app);
+  static define() {
+    return new ElectronWindow();
   }
 
   #WINDOW_CLOSE_EVENT = 'close';
   #IPC_BEFORE_CLOSE_EVENT = 'ipc:before-close';
 
-  #app;
-
-  constructor(app) {
+  constructor() {
     const title = 'Image Converter';
     const size = electron.screen.getPrimaryDisplay().workAreaSize;
 
@@ -29,7 +27,6 @@ class ElectronWindow extends electron.BrowserWindow {
       },
     });
 
-    this.#app = app;
     this.#initialize();
   }
 

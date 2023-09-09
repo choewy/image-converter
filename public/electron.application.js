@@ -55,7 +55,7 @@ class ElectronApplication {
   #onActivateApplication() {
     this.#debug(this.#onActivateApplication.name, this.#APP_ACTIVATE_EVENT);
 
-    if (this.#window === null || this.#window.isDestroyed) {
+    if (this.#window === null || this.#window.isDestroyed()) {
       this.#window = ElectronWindow.define();
     }
   }
